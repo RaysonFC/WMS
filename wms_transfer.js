@@ -21,13 +21,13 @@ function buildTransferSuggestions() {
   /* ── Passo 1: Agrupa saldo por (material + cd + armaz) ── */
   const grouped = {};
   WMS_DATA.forEach(r => {
-    const key = `${r.cd_material}|||${r.cd}|||${r.cd_centro_armaz}`;
+    const key = `${r.cd_material}|||${normalizeCd(r.cd)}|||${normalizeArmaz(r.cd_centro_armaz)}`;
     if (!grouped[key]) {
       grouped[key] = {
         cd_material:     r.cd_material,
         desc_material:   r.desc_material,
-        cd:              r.cd,
-        armaz:           r.cd_centro_armaz,
+        cd:              normalizeCd(r.cd),
+        armaz:           normalizeArmaz(r.cd_centro_armaz),
         saldo: 0,
       };
     }

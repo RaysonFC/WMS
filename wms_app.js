@@ -22,7 +22,7 @@ function launchApp(filename) {
 
 /* ── Filtros globais ── */
 function populateCdFilter() {
-  const cds = [...new Set(WMS_DATA.map(r => r.cd).filter(Boolean))]
+  const cds = [...new Set(WMS_DATA.map(r => normalizeCd(r.cd)).filter(Boolean))]
     .sort((a, b) => +a - +b || a.localeCompare(b));
 
   const sel = document.getElementById('filter-cd');
@@ -40,7 +40,7 @@ function populateArmazFilter(cdFilter = '') {
   const arms = [...new Set(
     WMS_DATA
       .filter(r => !cdFilter || r.cd === cdFilter)
-      .map(r => r.cd_centro_armaz)
+      .map(r => normalizeArmaz(r.cd_centro_armaz))
       .filter(Boolean)
   )].sort((a, b) => +a - +b || a.localeCompare(b));
 

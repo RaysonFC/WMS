@@ -1,5 +1,5 @@
 /* ============================================================
-   WMS ANALÍTICO — wms_config.js  [v2.0]
+   WMS ANALÍTICO — wms_config.js  [v2.1]
    Constantes globais e mapeamento de colunas
    ============================================================ */
 
@@ -7,20 +7,22 @@ const PAGE_SIZE  = 50;
 const CRITICAL   = 200;
 const WARN_MULT  = 1.5;
 
-/**
- * REGRAS DE TRANSFERÊNCIA POR ARMAZÉM
- * ARM 1  → origem livre para qualquer CD (exceto bloqueados)
- * ARM 28 → SOMENTE entre CD 1 ARM 28 ↔ CD 6 ARM 28
- * ARM 8  → origem APENAS para cd_unidade_de_n = "1"
- */
 const BLOCKED_ARMAZ_RAW = new Set([
   '0','2','8','20','21','22','23','24','25','26','27','29',
   '30','32','33','200','300','1001','9999',
   'ABAS','AMOS','HOLD','IMPO','INVE','LOJA','MTNL','PERD','PROD','QUAL','TEMP','TRAN','VENC',
 ]);
 
+/** Remove zeros à esquerda de cd_centro_armaz ex: '0028' → '28' */
 function normalizeArmaz(v) {
   const s = String(v ?? '').trim().toUpperCase();
+  if (/^\d+$/.test(s)) return String(parseInt(s, 10));
+  return s;
+}
+
+/** Remove zeros à esquerda de cd_unidade_de_negocio ex: '001' → '1', '006' → '6' */
+function normalizeCd(v) {
+  const s = String(v ?? '').trim();
   if (/^\d+$/.test(s)) return String(parseInt(s, 10));
   return s;
 }
@@ -32,18 +34,18 @@ function isArmazBlocked(v) {
 function isValidTransferPair(orig, dest) {
   const oArm = normalizeArmaz(orig.armaz);
   const dArm = normalizeArmaz(dest.armaz);
+  const oCd  = normalizeCd(orig.cd);
+  const dCd  = normalizeCd(dest.cd);
 
   if (isArmazBlocked(dest.armaz)) return false;
-  if (orig.cd === dest.cd && oArm === dArm) return false;
+  if (oCd === dCd && oArm === dArm) return false;
 
   if (oArm === '1') return true;
-
-  if (oArm === '8') return String(dest.cd).trim() === '1';
+  if (oArm === '8') return dCd === '1';
 
   if (oArm === '28') {
     if (dArm !== '28') return false;
-    return (orig.cd === '1' && dest.cd === '6') ||
-           (orig.cd === '6' && dest.cd === '1');
+    return (oCd === '1' && dCd === '6') || (oCd === '6' && dCd === '1');
   }
 
   return false;

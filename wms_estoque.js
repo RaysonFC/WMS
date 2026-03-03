@@ -11,8 +11,8 @@ function getEstoqueFiltered() {
   const saldo   = document.getElementById('filter-saldo').value;
 
   return WMS_DATA.filter(r => {
-    if (cd     && r.cd !== cd)                                                            return false;
-    if (armaz  && r.cd_centro_armaz !== armaz)                                            return false;
+    if (cd     && normalizeCd(r.cd) !== normalizeCd(cd))                                                            return false;
+    if (armaz  && normalizeArmaz(r.cd_centro_armaz) !== normalizeArmaz(armaz))                                            return false;
     if (produto && !r.cd_material.toLowerCase().includes(produto)
                && !r.desc_material.toLowerCase().includes(produto))                       return false;
     if (saldo === 'critico' && r.saldo >= CRITICAL)                                       return false;

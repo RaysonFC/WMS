@@ -1,17 +1,21 @@
 /* ============================================================
-   WMS ANALÍTICO — wms.comp2.js
+   WMS ANALÍTICO — wms_comp2.js  [v2.1]
    Aba "CD 1 × 6 — ARM 28" — comparação filtrada por ARM 28 apenas.
-   Somente registros com cd_centro_armaz = 28 entram no cálculo.
+   cd normalizado: '001' → '1', '006' → '6'
    ============================================================ */
 
 let comp2All = [];
 
-/* ---- Constrói dados agrupados por material (ARM 28 apenas) ---- */
 function buildComp2Data() {
   const map = {};
   WMS_DATA
-    .filter(r => ['1','6'].includes(r.cd) && normalizeArmaz(r.cd_centro_armaz) === '28')
+    .filter(r => {
+      const cd  = normalizeCd(r.cd);
+      const arm = normalizeArmaz(r.cd_centro_armaz);
+      return ['1','6'].includes(cd) && arm === '28';
+    })
     .forEach(r => {
+      const cd = normalizeCd(r.cd);
       if (!map[r.cd_material]) {
         map[r.cd_material] = {
           cd_material:   r.cd_material,
@@ -19,7 +23,7 @@ function buildComp2Data() {
           v_cd1: null, v_cd6: null,
         };
       }
-      const key = 'v_cd' + r.cd;
+      const key = 'v_cd' + cd;
       if (map[r.cd_material][key] === null) map[r.cd_material][key] = 0;
       map[r.cd_material][key] += r.saldo;
     });
@@ -30,7 +34,6 @@ function buildComp2Data() {
   }));
 }
 
-/* ---- Filtros ---- */
 function getComp2Filtered(all) {
   const produto = document.getElementById('filter-c2-produto').value.toLowerCase().trim();
   const saldo   = document.getElementById('filter-c2-saldo').value;
@@ -44,7 +47,6 @@ function getComp2Filtered(all) {
   });
 }
 
-/* ---- Dica de transferência inline ---- */
 function buildComp2TransferHint(r) {
   const cds      = [['1', r.v_cd1], ['6', r.v_cd6]];
   const critical = cds.filter(([, v]) => v !== null && v < CRITICAL);
@@ -58,34 +60,24 @@ function buildComp2TransferHint(r) {
   const qty = Math.ceil(Math.min(CRITICAL - toV, avail));
   if (qty <= 0) return '<span class="transfer-none">—</span>';
 
-  return `<div class="flow-arrow">
-    <span class="cd-badge ${cdClass(fromCd)}">CD${fromCd}</span>
-    <span class="flow-icon">→</span>
-    <span class="cd-badge ${cdClass(toCd)}">CD${toCd}</span>
-    <span class="transfer-badge">⇄ ${qty.toLocaleString('pt-BR')}</span>
-  </div>`;
+  return '<div class="flow-arrow"><span class="cd-badge ' + cdClass(fromCd) + '">CD' + fromCd + '</span><span class="flow-icon">→</span><span class="cd-badge ' + cdClass(toCd) + '">CD' + toCd + '</span><span class="transfer-badge">⇄ ' + qty.toLocaleString('pt-BR') + '</span></div>';
 }
 
-/* ---- Render ---- */
 function renderComp2() {
   const filtered = sortData(getComp2Filtered(comp2All), state.comp2.sort.col, state.comp2.sort.dir);
   const start    = (state.comp2.page - 1) * PAGE_SIZE;
   const page     = filtered.slice(start, start + PAGE_SIZE);
   const tbody    = document.getElementById('tbody-comp2');
 
-  tbody.innerHTML = filtered.length === 0
-    ? '<tr><td colspan="6" class="empty-state"><p>Nenhum resultado encontrado.</p></td></tr>'
-    : page.map(r => {
-        const hasCrit = [r.v_cd1, r.v_cd6].some(v => v !== null && v < CRITICAL);
-        return `<tr class="${hasCrit ? 'row-critical' : ''}">
-          <td><code style="font-family:var(--mono);font-size:11px;color:var(--accent)">${r.cd_material || '—'}</code></td>
-          <td title="${r.desc_material}">${r.desc_material || '—'}</td>
-          <td class="td-num">${fmtNum(r.v_cd1)}</td>
-          <td class="td-num">${fmtNum(r.v_cd6)}</td>
-          <td class="td-num" style="font-family:var(--mono);font-size:12px">${fmt(r.total, false)}</td>
-          <td>${buildComp2TransferHint(r)}</td>
-        </tr>`;
-      }).join('');
+  if (filtered.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" class="empty-state"><p>Nenhum resultado encontrado.</p></td></tr>';
+  } else {
+    tbody.innerHTML = page.map(r => {
+      const hasCrit = [r.v_cd1, r.v_cd6].some(v => v !== null && v < CRITICAL);
+      const cls = hasCrit ? 'row-critical' : '';
+      return '<tr class="' + cls + '"><td><code style="font-family:var(--mono);font-size:11px;color:var(--accent)">' + (r.cd_material||'—') + '</code></td><td title="' + r.desc_material + '">' + (r.desc_material||'—') + '</td><td class="td-num">' + fmtNum(r.v_cd1) + '</td><td class="td-num">' + fmtNum(r.v_cd6) + '</td><td class="td-num" style="font-family:var(--mono);font-size:12px">' + fmt(r.total, false) + '</td><td>' + buildComp2TransferHint(r) + '</td></tr>';
+    }).join('');
+  }
 
   renderPagination('pagination-comp2', filtered.length, state.comp2.page,
     p => { state.comp2.page = p; renderComp2(); }
@@ -93,7 +85,6 @@ function renderComp2() {
   updateSortHeaders('table-comp2', state.comp2.sort);
 }
 
-/* ---- Init ---- */
 function initComp2() {
   comp2All = buildComp2Data();
 
